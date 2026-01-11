@@ -110,6 +110,8 @@ public slots:
     void actMoveBottomCardsToGrave();
     void actMoveBottomCardsToExile();
     void actMoveBottomCardToTop();
+    void actFetchLandByType(const QString &landType);
+    void actFetchBasicLand(const QString &landName);
 
     void actSelectAll();
     void actSelectRow();
@@ -179,6 +181,7 @@ private:
     bool movingCardsUntilAutoPlay = false;
     FilterString movingCardsUntilFilter;
     int movingCardsUntilCounter = 0;
+    bool fetchingBasicLand = false; // True when fetching a basic land (moves non-matches to bottom)
 
     void createCard(const CardItem *sourceCard,
                     const QString &dbCardName,

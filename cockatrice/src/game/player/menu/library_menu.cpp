@@ -4,11 +4,16 @@
 #include "../../../client/settings/shortcuts_settings.h"
 #include "../../../interface/widgets/tabs/tab_game.h"
 #include "../../abstract_game.h"
+#include "../../board/card_item.h"
 #include "../player.h"
 #include "../player_actions.h"
 
 #include <QAction>
 #include <QMenu>
+#include <QSet>
+#include <libcockatrice/card/database/card_database_manager.h>
+#include <libcockatrice/deck_list/tree/inner_deck_list_node.h>
+#include <libcockatrice/filters/filter_string.h>
 
 LibraryMenu::LibraryMenu(Player *_player, QWidget *parent) : TearOffMenu(parent), player(_player)
 {
@@ -39,6 +44,13 @@ LibraryMenu::LibraryMenu(Player *_player, QWidget *parent) : TearOffMenu(parent)
 
     addAction(aAlwaysRevealTopCard);
     addAction(aAlwaysLookAtTopCard);
+    addSeparator();
+
+    mFetchLand = addMenu(QString());
+    connect(mFetchLand, &QMenu::aboutToShow, this, &LibraryMenu::populateFetchLandMenuWithLandTypes);
+
+    mFetchBasicLand = addMenu(QString());
+    connect(mFetchBasicLand, &QMenu::aboutToShow, this, &LibraryMenu::populateFetchBasicLandMenuWithAvailableLands);
     addSeparator();
     topLibraryMenu = addTearOffMenu(QString());
     bottomLibraryMenu = addTearOffMenu(QString());
@@ -198,6 +210,8 @@ void LibraryMenu::retranslateUi()
         mRevealLibrary->setTitle(tr("Reveal &library to..."));
         mLendLibrary->setTitle(tr("Lend library to..."));
         mRevealTopCard->setTitle(tr("Reveal &top cards to..."));
+        mFetchLand->setTitle(tr("F&etch land"));
+        mFetchBasicLand->setTitle(tr("&Fetch basic land"));
         topLibraryMenu->setTitle(tr("&Top of library..."));
         bottomLibraryMenu->setTitle(tr("&Bottom of library..."));
         aAlwaysRevealTopCard->setText(tr("&Always reveal top card"));
@@ -313,6 +327,118 @@ void LibraryMenu::onRevealTopCardTriggered()
             player->getPlayerActions()->actRevealTopCards(a->data().toInt(), number);
             defaultNumberTopCards = number;
         }
+    }
+}
+
+void LibraryMenu::populateFetchLandMenuWithLandTypes()
+{
+    mFetchLand->clear();
+
+    // Land types in Magic: The Gathering (in WUBRG order)
+    const QStringList landTypes = {"Plains", "Island", "Swamp", "Mountain", "Forest"};
+
+    // Get the deck list to check which land types are available
+    const DeckList &deck = player->getDeck();
+    auto cardNodes = deck.getCardNodes({DECK_ZONE_MAIN});
+
+    // Track which land types are in the deck
+    QSet<QString> availableLandTypes;
+    for (const auto *cardNode : cardNodes) {
+        QString cardName = cardNode->getName();
+
+        // Get the card info from the database
+        auto cardInfo = CardDatabaseManager::query()->getCardInfo(cardName);
+        if (!cardInfo) {
+            continue;
+        }
+
+        // Check each land type using FilterString (same as the search functionality)
+        for (const QString &landType : landTypes) {
+            QString filterExpr = QString("type:%1").arg(landType.toLower());
+            FilterString filter(filterExpr);
+            if (filter.check(cardInfo)) {
+                availableLandTypes.insert(landType);
+            }
+        }
+    }
+
+    // If no lands found, show a disabled message
+    if (availableLandTypes.isEmpty()) {
+        QAction *noLands = mFetchLand->addAction(tr("No lands in library"));
+        noLands->setEnabled(false);
+        return;
+    }
+
+    // Add menu items for each available land type, in the standard order
+    for (const QString &landType : landTypes) {
+        if (availableLandTypes.contains(landType)) {
+            QAction *a = mFetchLand->addAction(landType);
+            a->setData(landType);
+            connect(a, &QAction::triggered, this, &LibraryMenu::onFetchLandTriggered);
+        }
+    }
+}
+
+void LibraryMenu::populateFetchBasicLandMenuWithAvailableLands()
+{
+    mFetchBasicLand->clear();
+
+    // Add "Any Basic" option at the top
+    QAction *anyBasic = mFetchBasicLand->addAction(tr("Any Basic"));
+    anyBasic->setData(""); // Empty data means search all basics
+    connect(anyBasic, &QAction::triggered, this, &LibraryMenu::onFetchBasicLandTriggered);
+    mFetchBasicLand->addSeparator();
+
+    // Basic land names in Magic: The Gathering
+    const QStringList basicLandNames = {"Plains", "Island", "Swamp", "Mountain", "Forest"};
+
+    // Get the deck list to check which basic lands are in it
+    const DeckList &deck = player->getDeck();
+    auto cardNodes = deck.getCardNodes({DECK_ZONE_MAIN});
+
+    // Track which basic lands are in the deck
+    QSet<QString> availableLands;
+    for (const auto *cardNode : cardNodes) {
+        QString cardName = cardNode->getName();
+        // Check if this card name matches any basic land (case-insensitive)
+        for (const QString &landName : basicLandNames) {
+            if (cardName.compare(landName, Qt::CaseInsensitive) == 0) {
+                availableLands.insert(landName);
+                break;
+            }
+        }
+    }
+
+    // If no basic lands found, show a disabled message
+    if (availableLands.isEmpty()) {
+        QAction *noLands = mFetchBasicLand->addAction(tr("No basic lands in library"));
+        noLands->setEnabled(false);
+        return;
+    }
+
+    // Add menu items for each available basic land type, in the standard order
+    for (const QString &landName : basicLandNames) {
+        if (availableLands.contains(landName)) {
+            QAction *a = mFetchBasicLand->addAction(landName);
+            a->setData(landName);
+            connect(a, &QAction::triggered, this, &LibraryMenu::onFetchBasicLandTriggered);
+        }
+    }
+}
+
+void LibraryMenu::onFetchLandTriggered()
+{
+    if (auto *a = qobject_cast<QAction *>(sender())) {
+        QString landType = a->data().toString();
+        player->getPlayerActions()->actFetchLandByType(landType);
+    }
+}
+
+void LibraryMenu::onFetchBasicLandTriggered()
+{
+    if (auto *a = qobject_cast<QAction *>(sender())) {
+        QString landName = a->data().toString();
+        player->getPlayerActions()->actFetchBasicLand(landName);
     }
 }
 

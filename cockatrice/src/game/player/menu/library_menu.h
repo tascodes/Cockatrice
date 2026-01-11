@@ -32,9 +32,13 @@ public:
     void populateRevealLibraryMenuWithActivePlayers();
     void populateLendLibraryMenuWithActivePlayers();
     void populateRevealTopCardMenuWithActivePlayers();
+    void populateFetchLandMenuWithLandTypes();
+    void populateFetchBasicLandMenuWithAvailableLands();
     void onRevealLibraryTriggered();
     void onLendLibraryTriggered();
     void onRevealTopCardTriggered();
+    void onFetchLandTriggered();
+    void onFetchBasicLandTriggered();
     void setShortcutsActive();
     void setShortcutsInactive();
 
@@ -69,6 +73,8 @@ public:
     QMenu *mRevealLibrary = nullptr;
     QMenu *mLendLibrary = nullptr;
     QMenu *mRevealTopCard = nullptr;
+    QMenu *mFetchLand = nullptr;
+    QMenu *mFetchBasicLand = nullptr;
 
     QAction *aDrawCard = nullptr;
     QAction *aDrawCards = nullptr;

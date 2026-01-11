@@ -187,6 +187,12 @@ public slots:
     QTransform getViewTransform() const;
     QTransform getViewportTransform() const;
 
+    /** Returns the list of active zone view widgets. */
+    const QList<ZoneViewWidget *> &getZoneViews() const
+    {
+        return zoneViews;
+    }
+
 protected:
     /** Handles hover updates. */
     bool event(QEvent *event) override;

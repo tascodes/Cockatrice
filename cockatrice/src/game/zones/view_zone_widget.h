@@ -125,6 +125,12 @@ public:
     }
     void retranslateUi();
 
+    void setSearchText(const QString &text)
+    {
+        searchEdit.setText(text);
+        searchEdit.setFocus();
+    }
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     void initStyleOption(QStyleOption *option) const override;

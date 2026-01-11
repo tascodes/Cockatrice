@@ -5,10 +5,15 @@
 #include "../board/card_item.h"
 #include "../dialogs/dlg_move_top_cards_until.h"
 #include "../dialogs/dlg_roll_dice.h"
+#include "../game_scene.h"
 #include "../zones/hand_zone.h"
 #include "../zones/logic/view_zone_logic.h"
 #include "../zones/table_zone.h"
+#include "../zones/view_zone.h"
+#include "../zones/view_zone_widget.h"
 #include "card_menu_action_type.h"
+
+#include <QLineEdit>
 
 #include <libcockatrice/card/database/card_database_manager.h>
 #include <libcockatrice/card/relation/card_relation.h>
@@ -530,9 +535,37 @@ void PlayerActions::moveOneCardUntil(CardItem *card)
         if (movingCardsUntilCounter > 0) {
             moveTopCardTimer->start();
         } else {
+            // Found the card we were looking for
+            if (fetchingBasicLand) {
+                // Move the found land from stack to battlefield (table)
+                Command_MoveCard cmd;
+                cmd.set_start_zone("stack");
+                auto *cardToMove = cmd.mutable_cards_to_move()->add_card();
+                cardToMove->set_card_id(card->getId());
+                cmd.set_target_player_id(player->getPlayerInfo()->getId());
+                cmd.set_target_zone("table");
+                cmd.set_x(-1);
+                cmd.set_y(0);
+                sendGameCommand(cmd);
+                // Shuffle the deck after fetching a basic land
+                QTimer::singleShot(100, this, &PlayerActions::actShuffle);
+            }
             stopMoveTopCardsUntil();
         }
     } else {
+        // Card doesn't match
+        if (fetchingBasicLand) {
+            // In fetch mode, move non-matching cards from stack to bottom of the deck
+            Command_MoveCard cmd;
+            cmd.set_start_zone("stack");
+            auto *cardToMove = cmd.mutable_cards_to_move()->add_card();
+            cardToMove->set_card_id(card->getId());
+            cmd.set_target_player_id(player->getPlayerInfo()->getId());
+            cmd.set_target_zone("deck");
+            cmd.set_x(-1); // Bottom of deck
+            cmd.set_y(0);
+            sendGameCommand(cmd);
+        }
         moveTopCardTimer->start();
     }
 }
@@ -545,6 +578,7 @@ void PlayerActions::stopMoveTopCardsUntil()
     moveTopCardTimer->stop();
     movingCardsUntilCounter = 0;
     movingCardsUntil = false;
+    fetchingBasicLand = false;
 }
 
 void PlayerActions::actMoveTopCardToBottom()
@@ -843,6 +877,60 @@ void PlayerActions::actMoveBottomCardToPlayFaceDown()
     cmd.set_y(0);
 
     sendGameCommand(cmd);
+}
+
+void PlayerActions::actFetchLandByType(const QString &landType)
+{
+    if (player->getDeckZone()->getCards().empty()) {
+        return;
+    }
+
+    // Open the library view
+    GameScene *scene = player->getGameScene();
+    scene->toggleZoneView(player, "deck", -1);
+
+    // Find the library view that was just created and set the search text
+    const auto &zoneViews = scene->getZoneViews();
+    for (auto *view : zoneViews) {
+        if (view->getZone()->getLogic()->getName() == "deck" && view->getZone()->getLogic()->getPlayer() == player) {
+            // Search for lands with the specified land type (e.g., "type:forest")
+            // This will match any land with that type, including dual lands, fetch lands, etc.
+            QString searchFilter = QString("type:%1").arg(landType.toLower());
+            // Use QTimer to ensure the view is fully initialized before setting search text
+            QTimer::singleShot(0, view, [view, searchFilter]() { view->setSearchText(searchFilter); });
+            break;
+        }
+    }
+}
+
+void PlayerActions::actFetchBasicLand(const QString &landName)
+{
+    if (player->getDeckZone()->getCards().empty()) {
+        return;
+    }
+
+    // Open the library view
+    GameScene *scene = player->getGameScene();
+    scene->toggleZoneView(player, "deck", -1);
+
+    // Find the library view that was just created and set the search text
+    const auto &zoneViews = scene->getZoneViews();
+    for (auto *view : zoneViews) {
+        if (view->getZone()->getLogic()->getName() == "deck" && view->getZone()->getLogic()->getPlayer() == player) {
+            QString searchFilter;
+            if (landName.isEmpty()) {
+                // "Any Basic" - just search for all basic lands
+                searchFilter = "type:basic type:land";
+            } else {
+                // Set a smart filter that only matches basic lands with the specified name
+                // This excludes cards like "Misty Rainforest" when searching for "Forest"
+                searchFilter = QString("type:basic type:land %1").arg(landName);
+            }
+            // Use QTimer to ensure the view is fully initialized before setting search text
+            QTimer::singleShot(0, view, [view, searchFilter]() { view->setSearchText(searchFilter); });
+            break;
+        }
+    }
 }
 
 void PlayerActions::actUntapAll()
