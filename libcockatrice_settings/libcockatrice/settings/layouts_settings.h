@@ -31,6 +31,7 @@ public:
     void setGameCardInfoSize(const QSize &value);
     void setGameMessageLayoutSize(const QSize &value);
     void setGamePlayerListSize(const QSize &value);
+    void setGameInfoOverlayVisible(bool value);
 
     void setReplayPlayAreaGeometry(const QByteArray &value);
     void setReplayPlayAreaState(const QByteArray &value);
@@ -53,6 +54,7 @@ public:
     const QSize getGameCardInfoSize();
     const QSize getGameMessageLayoutSize();
     const QSize getGamePlayerListSize();
+    bool getGameInfoOverlayVisible();
 
     const QByteArray getReplayPlayAreaLayoutState();
     const QByteArray getReplayPlayAreaGeometry();

@@ -84,6 +84,7 @@ private:
         *aRemoveLocalArrows, *aRotateViewCW, *aRotateViewCCW, *aResetLayout, *aResetReplayLayout;
     QAction *aCardInfoDockVisible, *aCardInfoDockFloating, *aMessageLayoutDockVisible, *aMessageLayoutDockFloating,
         *aPlayerListDockVisible, *aPlayerListDockFloating, *aReplayDockVisible, *aReplayDockFloating;
+    QAction *aGameInfoOverlayVisible;
     QAction *aFocusChat;
     QList<QAction *> phaseActions;
     QAction *aCardMenu;

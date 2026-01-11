@@ -142,6 +142,17 @@ void LayoutsSettings::setGamePlayerListSize(const QSize &value)
     setValue(value, "layouts/gameplayarea_PlayerListSize");
 }
 
+bool LayoutsSettings::getGameInfoOverlayVisible()
+{
+    QVariant previous = getValue("layouts/gameInfoOverlay_visible");
+    return previous == QVariant() ? false : previous.toBool();
+}
+
+void LayoutsSettings::setGameInfoOverlayVisible(bool value)
+{
+    setValue(value, "layouts/gameInfoOverlay_visible");
+}
+
 void LayoutsSettings::setReplayPlayAreaGeometry(const QByteArray &value)
 {
     setValue(value, "layouts/replayplayarea_geometry");

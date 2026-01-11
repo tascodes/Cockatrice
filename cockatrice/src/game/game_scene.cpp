@@ -2,9 +2,11 @@
 
 #include "../client/settings/cache_settings.h"
 #include "board/card_item.h"
+#include "game_info_overlay.h"
 #include "phases_toolbar.h"
 #include "player/player.h"
 #include "player/player_graphics_item.h"
+#include "zones/table_zone.h"
 #include "zones/view_zone.h"
 #include "zones/view_zone_widget.h"
 
@@ -26,7 +28,8 @@
  * Finally, calls rearrange() to layout players initially.
  */
 GameScene::GameScene(PhasesToolbar *_phasesToolbar, QObject *parent)
-    : QGraphicsScene(parent), phasesToolbar(_phasesToolbar), viewSize(QSize()), playerRotation(0)
+    : QGraphicsScene(parent), phasesToolbar(_phasesToolbar), gameInfoOverlaysVisible(false), viewSize(QSize()),
+      playerRotation(0)
 {
     animationTimer = new QBasicTimer;
     addItem(phasesToolbar);
@@ -70,6 +73,12 @@ void GameScene::addPlayer(Player *player)
     players << player->getGraphicsItem();
     addItem(player->getGraphicsItem());
     connect(player->getGraphicsItem(), &PlayerGraphicsItem::sizeChanged, this, &GameScene::rearrange);
+
+    // Create game info overlay for this player
+    auto *overlay = new GameInfoOverlay(player);
+    gameInfoOverlays[player] = overlay;
+    addItem(overlay);
+    overlay->setVisible(gameInfoOverlaysVisible);
 }
 
 /**
@@ -87,6 +96,14 @@ void GameScene::removePlayer(Player *player)
             zone->close();
         }
     }
+
+    // Remove and delete game info overlay
+    if (gameInfoOverlays.contains(player)) {
+        GameInfoOverlay *overlay = gameInfoOverlays.take(player);
+        removeItem(overlay);
+        delete overlay;
+    }
+
     players.removeOne(player->getGraphicsItem());
     removeItem(player->getGraphicsItem());
     rearrange();
@@ -263,6 +280,21 @@ QSizeF GameScene::computeSceneSizeAndPlayerLayout(const QList<Player *> &players
             PlayerGraphicsItem *player = playersByColumn[col][row];
             player->setPos(x, y);
             player->setMirrored(row != rows - 1); // Mirror all except bottom-most
+
+            // Position game info overlay for this player (top-right corner of play area)
+            Player *playerObj = player->getPlayer();
+            if (gameInfoOverlays.contains(playerObj)) {
+                GameInfoOverlay *overlay = gameInfoOverlays[playerObj];
+                const qreal overlayWidth = 130;
+                const qreal overlayHeight = 95;
+                overlay->setSize(overlayWidth, overlayHeight);
+
+                // Position at right edge of the scene
+                qreal overlayX = sceneWidth - overlayWidth - 10;
+                qreal overlayY = y + 10;
+                overlay->setPos(overlayX, overlayY);
+            }
+
             y += player->boundingRect().height() + playerAreaSpacing;
         }
         x += columnWidth[col] + playerAreaSpacing;
@@ -320,12 +352,25 @@ void GameScene::resizeColumnsAndPlayers(const QList<qreal> &minWidthByColumn, qr
     qreal extraWidthPerColumn = (newWidth - minWidth) / playersByColumn.size();
     qreal newx = phasesToolbar->getWidth();
 
+    const qreal overlayWidth = 130;
+
     for (int col = 0; col < playersByColumn.size(); ++col) {
+        qreal columnWidth = minWidthByColumn[col] + extraWidthPerColumn;
         for (PlayerGraphicsItem *player : playersByColumn[col]) {
-            player->processSceneSizeChange(minWidthByColumn[col] + extraWidthPerColumn);
+            player->processSceneSizeChange(columnWidth);
             player->setPos(newx, player->y());
+
+            // Update game info overlay position (top-right corner of play area)
+            Player *playerObj = player->getPlayer();
+            if (gameInfoOverlays.contains(playerObj)) {
+                GameInfoOverlay *overlay = gameInfoOverlays[playerObj];
+                // Position at right edge of the scene
+                qreal overlayX = newWidth - overlayWidth - 10;
+                qreal overlayY = player->y() + 10;
+                overlay->setPos(overlayX, overlayY);
+            }
         }
-        newx += minWidthByColumn[col] + extraWidthPerColumn;
+        newx += columnWidth;
     }
 }
 
@@ -511,6 +556,18 @@ void GameScene::unregisterAnimationItem(AbstractCardItem *card)
     cardsToAnimate.remove(static_cast<CardItem *>(card));
     if (cardsToAnimate.isEmpty())
         animationTimer->stop();
+}
+
+// ---------- Game Info Overlays ----------
+
+void GameScene::setGameInfoOverlaysVisible(bool visible)
+{
+    gameInfoOverlaysVisible = visible;
+
+    // Update visibility of all existing overlays
+    for (GameInfoOverlay *overlay : gameInfoOverlays) {
+        overlay->setVisible(visible);
+    }
 }
 
 // ---------- Rubber Band ----------

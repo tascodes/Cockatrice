@@ -349,6 +349,8 @@ void TabGame::retranslateUi()
     aPlayerListDockVisible->setText(tr("Visible"));
     aPlayerListDockFloating->setText(tr("Floating"));
 
+    aGameInfoOverlayVisible->setText(tr("Game Info Overlay"));
+
     if (replayDock) {
         replayDockMenu->setTitle(tr("Replay Timeline"));
         aReplayDockVisible->setText(tr("Visible"));
@@ -1062,6 +1064,12 @@ void TabGame::createViewMenuItems()
     aPlayerListDockFloating->setCheckable(true);
     connect(aPlayerListDockFloating, &QAction::triggered, this, &TabGame::dockFloatingTriggered);
 
+    viewMenu->addSeparator();
+
+    aGameInfoOverlayVisible = viewMenu->addAction(QString());
+    aGameInfoOverlayVisible->setCheckable(true);
+    connect(aGameInfoOverlayVisible, &QAction::triggered, this, &TabGame::dockVisibleTriggered);
+
     if (replayDock) {
         replayDockMenu = viewMenu->addMenu(QString());
 
@@ -1116,6 +1124,11 @@ void TabGame::loadLayout()
     aCardInfoDockFloating->setEnabled(aCardInfoDockVisible->isChecked());
     aMessageLayoutDockFloating->setEnabled(aMessageLayoutDockVisible->isChecked());
     aPlayerListDockFloating->setEnabled(aPlayerListDockVisible->isChecked());
+
+    // Load game info overlay visibility from settings
+    bool gameInfoOverlayVisible = layouts.getGameInfoOverlayVisible();
+    aGameInfoOverlayVisible->setChecked(gameInfoOverlayVisible);
+    scene->setGameInfoOverlaysVisible(gameInfoOverlayVisible);
 
     aCardInfoDockFloating->setChecked(cardInfoDock->isFloating());
     aMessageLayoutDockFloating->setChecked(messageLayoutDock->isFloating());
@@ -1438,6 +1451,12 @@ void TabGame::dockVisibleTriggered()
     if (o == aPlayerListDockVisible) {
         playerListDock->setVisible(aPlayerListDockVisible->isChecked());
         aPlayerListDockFloating->setEnabled(aPlayerListDockVisible->isChecked());
+        return;
+    }
+
+    if (o == aGameInfoOverlayVisible) {
+        scene->setGameInfoOverlaysVisible(aGameInfoOverlayVisible->isChecked());
+        SettingsCache::instance().layouts().setGameInfoOverlayVisible(aGameInfoOverlayVisible->isChecked());
         return;
     }
 

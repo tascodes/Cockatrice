@@ -20,6 +20,7 @@ class AbstractCardItem;
 class CardItem;
 class ServerInfo_Card;
 class PhasesToolbar;
+class GameInfoOverlay;
 class QBasicTimer;
 
 /**
@@ -44,6 +45,8 @@ private:
     QList<PlayerGraphicsItem *> players;                ///< All player graphics items
     QList<QList<PlayerGraphicsItem *>> playersByColumn; ///< Players organized by column
     QList<ZoneViewWidget *> zoneViews;                  ///< Active zone view widgets
+    QMap<Player *, GameInfoOverlay *> gameInfoOverlays; ///< Game info overlays per player
+    bool gameInfoOverlaysVisible;                       ///< Whether overlays are visible
     QSize viewSize;                                     ///< Current view size
     QPointer<CardItem> hoveredCard;                     ///< Currently hovered card
     QBasicTimer *animationTimer;                        ///< Timer for card animations
@@ -90,6 +93,18 @@ public:
 
     /** Recomputes the layout of players and the scene size. */
     void rearrange();
+
+    /**
+     * @brief Sets visibility of game info overlays.
+     * @param visible Whether overlays should be shown.
+     */
+    void setGameInfoOverlaysVisible(bool visible);
+
+    /** @brief Returns the current visibility state of game info overlays. */
+    [[nodiscard]] bool getGameInfoOverlaysVisible() const
+    {
+        return gameInfoOverlaysVisible;
+    }
 
     /**
      * @brief Handles view resize and redistributes player positions.

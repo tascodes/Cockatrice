@@ -79,6 +79,7 @@ set(cockatrice_SOURCES
     src/game/log/message_log_widget.cpp
     src/game/phase.cpp
     src/game/phases_toolbar.cpp
+    src/game/game_info_overlay.cpp
     src/game/player/menu/card_menu.cpp
     src/game/player/menu/custom_zone_menu.cpp
     src/game/player/menu/grave_menu.cpp
